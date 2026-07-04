@@ -8,6 +8,7 @@ n8n: orchestrates trigger → predict → AI reason → Google Sheets → respon
 """
 import streamlit as st
 import requests
+import json
 import os
 
 st.set_page_config(page_title="YouTube Title Optimizer", page_icon="🎬", layout="centered")
@@ -16,6 +17,7 @@ st.markdown("""<style>#MainMenu {visibility: hidden;} footer {visibility: hidden
 </style>""", unsafe_allow_html=True)
 
 N8N_URL = os.environ.get("N8N_WEBHOOK", "https://katherine2304.app.n8n.cloud/webhook/optimize")
+RENDER_URL = "https://youtube-title-grader.onrender.com/optimize"
 
 CATS = {1:"Film & Animation",2:"Autos & Vehicles",10:"Music",15:"Pets & Animals",17:"Sports",
         19:"Travel & Events",20:"Gaming",22:"People & Blogs",23:"Comedy",24:"Entertainment",
@@ -50,25 +52,38 @@ if page == "🎯 End User":
     if go and idea.strip():
         with st.spinner("AI optimizing your title..."):
             try:
-                resp = requests.post(N8N_URL, json={"idea": idea.strip(), "category_id": CAT_ID[cat_name]}, timeout=300)
+                # Call Render API directly for structured data
+                resp = requests.post(RENDER_URL, json={"idea": idea.strip(), "category_id": CAT_ID[cat_name]}, timeout=180)
                 if resp.ok:
                     d = resp.json()
                     title = d.get("best_title", "?")
                     score = d.get("best_score", 0)
-                    analysis = d.get("ai_analysis", "")
+                    idea_text = d.get("idea", idea)
+                    category_text = d.get("category", cat_name)
 
                     st.divider()
                     st.markdown(f"""
-                    <div style="text-align:center;padding:1rem 0;">
-                        <div style="font-size:0.85rem;color:#888;margin-bottom:0.5rem;">YOUR OPTIMIZED TITLE</div>
-                        <div style="font-size:1.8rem;font-weight:800;line-height:1.3;">"{title}"</div>
-                        <div style="font-size:2.5rem;font-weight:800;color:#22c55e;margin-top:0.5rem;">{score}<span style="font-size:1rem;color:#888;">/100</span></div>
+                    <div style="background:#1e293b;border-radius:12px;padding:2rem 1.5rem;margin:1rem 0;max-width:100%;overflow:hidden;">
+                        <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:0.5rem;">Your Idea</div>
+                        <div style="font-size:1rem;color:#e2e8f0;word-wrap:break-word;overflow-wrap:break-word;line-height:1.4;">{idea_text}</div>
+                        <div style="font-size:0.75rem;color:#64748b;margin-top:0.25rem;margin-bottom:1.5rem;">Category: {category_text}</div>
+                        <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:0.5rem;">Optimized Title</div>
+                        <div style="font-size:1.4rem;font-weight:700;color:#f1f5f9;word-wrap:break-word;overflow-wrap:break-word;line-height:1.3;">&ldquo;{title}&rdquo;</div>
+                        <div style="font-size:2.5rem;font-weight:800;color:#22c55e;margin-top:0.75rem;line-height:1;">{score}<span style="font-size:0.9rem;color:#94a3b8;font-weight:400;"> / 100</span></div>
                     </div>
                     """, unsafe_allow_html=True)
 
-                    if analysis:
-                        with st.expander("💡 AI's reasoning"):
-                            st.write(analysis)
+                    # Try n8n for AI analysis (best-effort)
+                    try:
+                        r2 = requests.post(N8N_URL, json={"idea": idea.strip(), "category_id": CAT_ID[cat_name]}, timeout=60)
+                        if r2.ok:
+                            n8n_d = r2.json()
+                            analysis = n8n_d.get("ai_analysis", n8n_d.get("output", ""))
+                            if analysis:
+                                with st.expander("💡 AI's reasoning"):
+                                    st.write(analysis)
+                    except:
+                        pass  # n8n is optional, skip if unavailable
 
                     if score >= 75:
                         st.success("Strong title. Worth publishing.")
@@ -77,7 +92,7 @@ if page == "🎯 End User":
                     else:
                         st.warning("Needs work. Describe your idea more specifically.")
                 else:
-                    st.warning(f"Error ({resp.status_code}). Is n8n activated?")
+                    st.warning(f"Render API error ({resp.status_code})")
             except requests.Timeout:
                 st.warning("Timed out — n8n may be stuck.")
             except requests.RequestException:
@@ -114,48 +129,84 @@ else:
     if go2 and idea2.strip():
         with st.spinner("Running optimization..."):
             try:
-                resp = requests.post(N8N_URL, json={"idea": idea2.strip(), "category_id": CAT_ID[cat2]}, timeout=300)
+                # Call Render API directly for structured data (rounds, scores)
+                resp = requests.post(RENDER_URL, json={"idea": idea2.strip(), "category_id": CAT_ID[cat2]}, timeout=180)
                 if resp.ok:
                     d = resp.json()
                     rounds = d.get("rounds", [])
                     best_title = d.get("best_title", "?")
                     best_score = d.get("best_score", 0)
-                    analysis = d.get("ai_analysis", "")
 
+                    # ── SUMMARY CARD ──
                     if rounds:
                         st.divider()
-                        st.markdown(f"### Winner: \"{best_title}\" — {best_score}/100")
+                        idea_text = d.get("idea", idea2)
+                        category_text = d.get("category", cat2)
+                        st.markdown(f"""
+                        <div style="background:#1e293b;border-radius:12px;padding:2rem 1.5rem;margin:1rem 0;max-width:100%;overflow:hidden;">
+                            <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:0.5rem;">Video Idea</div>
+                            <div style="font-size:1rem;color:#e2e8f0;word-wrap:break-word;overflow-wrap:break-word;line-height:1.4;">{idea_text}</div>
+                            <div style="font-size:0.75rem;color:#64748b;margin-top:0.25rem;margin-bottom:1.5rem;">Category: {category_text}</div>
+                            <div style="font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:0.5rem;">Best Title</div>
+                            <div style="font-size:1.4rem;font-weight:700;color:#f1f5f9;word-wrap:break-word;overflow-wrap:break-word;line-height:1.3;">&ldquo;{best_title}&rdquo;</div>
+                            <div style="font-size:2.5rem;font-weight:800;color:#22c55e;margin-top:0.75rem;line-height:1;">{best_score}<span style="font-size:0.9rem;color:#94a3b8;font-weight:400;"> / 100</span></div>
+                        </div>
+                        """, unsafe_allow_html=True)
 
                         for rd in rounds:
                             rn = rd.get("round", "?")
                             desc = rd.get("description", "")
-                            st.markdown(f"#### Round {rn}: {desc}")
                             candidates = rd.get("candidates", [])
+
+                            st.markdown(f"### Round {rn}")
+                            st.caption(desc)
+
                             for c in candidates:
                                 t = c.get("title", "")
                                 s = c.get("score", 0)
-                                color = "#22c55e" if s >= 75 else ("#f59e0b" if s >= 50 else "#ef4444")
+                                dec = c.get("decision", "")
                                 helps = c.get("helps", [])
                                 hurts = c.get("hurts", [])
 
-                                with st.expander(f"{t} — {s}/100"):
-                                    col_h1, col_h2 = st.columns(2)
-                                    with col_h1:
-                                        st.caption("Helps:")
-                                        for h in helps[:3]:
-                                            st.caption(f"  + {h['feature']}: {h['effect']:.4f}")
-                                    with col_h2:
-                                        st.caption("Hurts:")
-                                        for h in hurts[:3]:
-                                            st.caption(f"  - {h['feature']}: {h['effect']:.4f}")
+                                if s >= 80:
+                                    badge = f":green[{s}/100]"
+                                elif s >= 65:
+                                    badge = f":orange[{s}/100]"
+                                else:
+                                    badge = f":red[{s}/100]"
+
+                                with st.expander(f"{badge}  |  {dec}  |  {t}"):
+                                    ch1, ch2 = st.columns(2)
+                                    with ch1:
+                                        st.caption("**Helps** :arrow_up:")
+                                        for h in helps:
+                                            effect = h['effect']
+                                            bar = "█" * max(1, int(abs(effect) * 80))
+                                            st.caption(f"`{h['feature']}` {bar} {effect:+.4f}")
+                                    with ch2:
+                                        st.caption("**Hurts** :arrow_down:")
+                                        for h in hurts:
+                                            effect = h['effect']
+                                            bar = "█" * max(1, int(abs(effect) * 80))
+                                            st.caption(f"`{h['feature']}` {bar} {effect:+.4f}")
                             st.divider()
 
-                        if analysis:
-                            st.info(f"**AI says:** {analysis}")
-                    else:
+                        # ── AI ANALYSIS from n8n (best-effort) ──
+                        try:
+                            r2 = requests.post(N8N_URL, json={"idea": idea2.strip(), "category_id": CAT_ID[cat2]}, timeout=60)
+                            if r2.ok:
+                                n8n_d = r2.json()
+                                analysis = n8n_d.get("ai_analysis", n8n_d.get("output", ""))
+                                if analysis:
+                                    st.markdown("### :robot_face: AI Analysis")
+                                    st.info(analysis)
+                        except:
+                            st.caption("(AI analysis unavailable — n8n may be offline)")
+
+                    elif d:
                         st.json(d)
                 else:
-                    st.warning(f"Error ({resp.status_code})")
+                    st.warning(f"Render API error ({resp.status_code})")
             except requests.Timeout:
                 st.warning("Timed out.")
             except requests.RequestException:

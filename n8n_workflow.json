@@ -2,10 +2,17 @@
   "name": "YouTube Title Optimizer — Agentic AI (5-Layer)",
   "nodes": [
     {
-      "parameters": {"httpMethod": "POST", "path": "optimize", "responseMode": "lastNode"},
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "optimize",
+        "responseMode": "responseNode"
+      },
       "name": "1. Trigger (Webhook)",
       "type": "n8n-nodes-base.webhook",
-      "position": [250, 300]
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
@@ -14,70 +21,82 @@
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            {"name": "idea", "value": "={{ $json.body.idea }}"},
-            {"name": "category_id", "value": "={{ $json.body.category_id || 24 }}"}
+            {
+              "name": "idea",
+              "value": "={{ $json.body.idea }}"
+            },
+            {
+              "name": "category_id",
+              "value": "={{ $json.body.category_id || 24 }}"
+            }
           ]
         }
       },
-      "name": "2. Call Model (Render /optimize)",
+      "name": "2. Call Render API",
       "type": "n8n-nodes-base.httpRequest",
-      "position": [500, 300]
-    },
-    {
-      "parameters": {
-        "jsCode": "const d = $input.first().json;\nconst rounds = d.rounds || [];\nlet summary = '';\nrounds.forEach(r => {\n  const c = r.candidates || [];\n  summary += `Round ${r.round}: ` + c.map(x => x.title + ' (' + x.score + ')').join(' | ') + '\\n';\n});\n\nreturn {\n  idea: d.idea,\n  category: d.category,\n  best_title: d.best_title,\n  best_score: d.best_score,\n  rounds_summary: summary,\n  full_result: d\n};"
-      },
-      "name": "3. Format Results",
-      "type": "n8n-nodes-base.code",
-      "position": [750, 300]
+      "position": [
+        500,
+        300
+      ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "You are a YouTube content strategist. Analyze this AI optimization result and explain what happened.\n\nIdea: {{ $json.idea }}\nCategory: {{ $json.category }}\n\nBest title found: \"{{ $json.best_title }}\" — Score: {{ $json.best_score }}/100\n\nOptimization process:\n{{ $json.rounds_summary }}\n\nYour task:\n1. Explain in 2-3 sentences WHY the winning title scored highest\n2. Point out 1-2 patterns you noticed across rounds\n3. Give one actionable tip for the creator\n\nKeep it under 120 words. Be specific and useful."
+        "text": "You are a YouTube content strategist. Analyze the optimization result below.\nExplain:\n1. In 2-3 sentences, why the winning title scored highest\n2. 1-2 patterns you noticed across rounds\n3. One actionable tip for the creator\nKeep it under 120 words. Be specific and useful."
       },
       "name": "4. AI Agent (Reasoning)",
       "type": "@n8n/n8n-nodes-langchain.agent",
-      "position": [1000, 300]
-    },
-    {
-      "parameters": {
-        "operation": "append",
-        "documentId": {"__rl": true, "value": "={{ $env.GOOGLE_SHEET_ID }}", "mode": "list"},
-        "sheetName": "Sheet1",
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "timestamp": "={{ $now.format('YYYY-MM-DD HH:mm') }}",
-            "idea": "={{ $('3. Format Results').first().json.idea }}",
-            "best_title": "={{ $('3. Format Results').first().json.best_title }}",
-            "score": "={{ $('3. Format Results').first().json.best_score }}",
-            "rounds": "={{ $('3. Format Results').first().json.rounds_summary }}",
-            "ai_analysis": "={{ $('4. AI Agent (Reasoning)').first().json.output || $('4. AI Agent (Reasoning)').first().json.text }}"
-          }
-        }
-      },
-      "name": "5. Log to Google Sheets",
-      "type": "n8n-nodes-base.googleSheets",
-      "position": [1250, 150]
+      "position": [
+        1000,
+        300
+      ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\n  \"idea\": {{ JSON.stringify($('3. Format Results').first().json.idea) }},\n  \"best_title\": {{ JSON.stringify($('3. Format Results').first().json.best_title) }},\n  \"best_score\": {{ $('3. Format Results').first().json.best_score }},\n  \"rounds\": {{ JSON.stringify($('3. Format Results').first().json.full_result.rounds) }},\n  \"ai_analysis\": {{ JSON.stringify($('4. AI Agent (Reasoning)').first().json.output || $('4. AI Agent (Reasoning)').first().json.text) }}\n}"
+        "responseBody": "={\n  \"idea\": {{ JSON.stringify($(\"2. Call Render API\").first().json.idea) }},\n  \"best_title\": {{ JSON.stringify($(\"2. Call Render API\").first().json.best_title) }},\n  \"best_score\": {{ $(\"2. Call Render API\").first().json.best_score }},\n  \"rounds\": {{ JSON.stringify($(\"2. Call Render API\").first().json.rounds) }},\n  \"ai_analysis\": {{ JSON.stringify($(\"4. AI Agent (Reasoning)\").first().json.output || $(\"4. AI Agent (Reasoning)\").first().json.text) }}\n}"
       },
       "name": "6. Respond",
       "type": "n8n-nodes-base.respondToWebhook",
-      "position": [1500, 300]
+      "position": [
+        1500,
+        300
+      ]
     }
   ],
   "connections": {
-    "1. Trigger (Webhook)": {"main": [[{"node": "2. Call Model (Render /optimize)", "type": "main", "index": 0}]]},
-    "2. Call Model (Render /optimize)": {"main": [[{"node": "3. Format Results", "type": "main", "index": 0}]]},
-    "3. Format Results": {"main": [
-      [{"node": "4. AI Agent (Reasoning)", "type": "main", "index": 0}],
-      [{"node": "5. Log to Google Sheets", "type": "main", "index": 0}]
-    ]},
-    "4. AI Agent (Reasoning)": {"main": [[{"node": "6. Respond", "type": "main", "index": 0}]]}
+    "1. Trigger (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "2. Call Model (Render /optimize)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. AI Agent (Reasoning)": {
+      "main": [
+        [
+          {
+            "node": "6. Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Call Render API": {
+      "main": [
+        [
+          {
+            "node": "4. AI Agent (Reasoning)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   }
 }

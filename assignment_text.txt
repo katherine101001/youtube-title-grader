@@ -1,0 +1,559 @@
+XMUM.OAA - 100/2/8-V3.0 
+ 
+Page | 1  
+ 
+DESCRIPTION OF COURSEWORK 
+ 
+Course Code 
+SWE402 
+Course Name 
+Data Mining 
+Lecturer 
+Teo Bee Guan 
+Academic Session 2026/04 
+Assessment Title 
+Assignment 
+ 
+A. Introduction/ Situation/ Background Information 
+This assignment requires students to design and implement an autonomous agentic AI tool using 
+n8n, an open-source workflow automation platform. The tool must address a real-world data 
+mining problem or deploy a trained machine learning (ML) or deep learning (DL) model for 
+prediction. Students are expected to demonstrate their understanding of agentic AI concepts, data 
+mining techniques, and ML/DL model integration by building a fully functional, end-to-end 
+automated workflow in n8n that can perceive, reason, act, and deliver results with minimal human 
+intervention. 
+ 
+B. Course Learning Outcomes (CLO) covered 
+At the end of this assessment, students are able to: 
+CLO 1 
+Describe the concept and principles of data mining and its algorithms. 
+CLO 2 
+Apply the knowledge to design a data mining algorithm. 
+CLO 3 
+Assess the performance of data mining algorithms for a given problem. 
+CLO 4 
+Build programming solutions using data mining techniques for a given problem. 
+ 
+C. University Policy on Academic Misconduct 
+ 
+1. Academic misconduct is a serious offense in Xiamen University Malaysia. It can be defined 
+as any of the following: 
+i. Plagiarism is submitting or presenting someone else’s work, words, ideas, data or 
+information as your own intentionally or unintentionally. This includes incorporating 
+OFFICE OF ACADEMIC AFFAIRS 
+Reference No. : XMUM.OAA - 100/2/8-V3.0 
+Effective Date : 1 JUNE 2023 
+XMUM.OAA - 100/2/8-V3.0 
+ 
+Page | 2  
+published and unpublished material, whether in manuscript, printed or electronic form into 
+your work without acknowledging the source (the person and the work).  
+ii. Collusion is two or more people collaborating on a piece of work (in part or whole) which 
+is intended to be wholly individual and passed it off as own individual work. 
+iii. Cheating is an act of dishonesty or fraud in order to gain an unfair advantage in an 
+assessment. This includes using or attempting to use, or assisting another to use materials 
+that are prohibited or inappropriate, commissioning work from a third party, falsifying data, 
+or breaching any examination rules. 
+ 
+2. All assessments submitted must be the student’s own work, without any materials generated 
+by AI tools, including direct copying and pasting of text or paraphrasing. Any form of 
+academic misconduct, including using prohibited materials or inappropriate assistance, is a 
+serious offense and will result in a zero mark for the entire assessment or part of it. If there is 
+more than one guilty party, such as in case of collusion, all parties involved will receive the 
+same penalty.  
+ 
+D. Instruction to Students 
+This assignment is individual-based. You must submit the required files to Moodle before 12 July 
+2026, 11:59 PM. The submission should include the following files: 
+• Assignment Cover Page along with the marking rubric. Name the cover page file as 
+<StudentID_SWE402_Assignment> 
+• A Juypterlab file  
+• A JSON export of your n8n workflow(s). Export from n8n: open the workflow → three-
+dot menu → Download.   
+• A written report (PDF) covering your design rationale, findings, and reflections as 
+specified in Task 1. 
+ 
+ 
+ 
+ 
+ 
+XMUM.OAA - 100/2/8-V3.0 
+ 
+Page | 3  
+E. Evaluation Breakdown 
+No. 
+Component Title 
+Percentage 
+(%) 
+1.  
+Project Design and Report  
+40 
+2.  
+Data Mining, Model Development, and Agentic AI Implementation  
+60 
+ 
+TOTAL 
+100 
+ 
+F. Task(s) 
+In this assignment, you are required to design and implement an autonomous agentic AI solution 
+that addresses a real-world problem using data mining and machine learning techniques. The 
+solution should not only analyse data and generate predictions but also demonstrate how intelligent 
+agents can automate decision-making and actions through workflow orchestration. 
+You may choose any application domain, such as retail, healthcare, education, finance, logistics, 
+marketing, or human resources. The selected problem should have practical value and be supported 
+by a publicly available dataset. Throughout this assignment, you are expected to apply the 
+knowledge and skills acquired in this course, including data preparation, exploratory data analysis, 
+data mining, predictive modelling, and intelligent workflow automation. 
+The final solution should consist of a trained machine learning or deep learning model integrated 
+into an n8n workflow that can automatically ingest data, generate predictions, reason over the 
+results, and perform appropriate actions or recommendations with minimal human intervention. 
+ 
+Task 1: Project Design and Report (40 Marks) 
+Prepare a report describing the design, implementation, and evaluation of your project. The report 
+should clearly demonstrate how data mining, machine learning, and agentic AI concepts are 
+applied to solve a real-world problem. 
+The report should begin by introducing the selected problem and dataset. You should explain the 
+business or practical value of the problem being addressed and justify why the chosen dataset is 
+suitable. The proposed solution architecture should then be presented in a clear diagram illustrating 
+how data flows through the system, from ingestion and processing to prediction, reasoning, and 
+output generation. 
+Your architecture diagram should include the following layers: 
+• 
+Trigger Layer 
+• 
+Data Ingestion Layer 
+• 
+Prediction Layer 
+• 
+AI Agent Layer 
+XMUM.OAA - 100/2/8-V3.0 
+ 
+Page | 4  
+• 
+Action / Output Layer 
+ 
+You should also discuss the implementation process, including data preparation activities, 
+exploratory data analysis findings, selected data mining techniques, predictive model development, 
+and the design of the n8n workflow. The report should conclude with a critical evaluation of the 
+overall solution, including its strengths, limitations, and possible future enhancements. 
+The report should cover the following: 
+• 
+Problem statement and project objectives. 
+• 
+Dataset description, source, and key attributes. 
+• 
+Agentic AI architecture and workflow design. 
+• 
+Data preparation and preprocessing activities. 
+• 
+Exploratory data analysis and data mining findings. 
+• 
+Predictive model development and evaluation. 
+• 
+Description of the deployed model and integration approach. 
+• 
+Implementation of the n8n agentic workflow. 
+• 
+Discussion of limitations and future improvements. 
+ 
+Task 2: Data Mining, Model Development, and Agentic AI Implementation (60 Marks) 
+Task 2a: Data Preparation (10 Marks) 
+Load and prepare the selected dataset for analysis. You should examine the dataset's structure and 
+quality, identify any issues that may affect the analysis, and perform appropriate preprocessing 
+activities to ensure the dataset is suitable for subsequent modeling tasks. 
+This section should cover: 
+• 
+Dataset preview and summary. 
+• 
+Identification of data quality issues. 
+• 
+Data cleaning and preprocessing activities. 
+• 
+Final prepared dataset. 
+ 
+ 
+ 
+XMUM.OAA - 100/2/8-V3.0 
+ 
+Page | 5  
+Task 2b: Exploratory Data Analysis (15 Marks) 
+Perform exploratory data analysis and apply appropriate data mining techniques to gain insights 
+into the selected problem. You should use suitable visualizations and analytical methods to 
+uncover meaningful patterns, trends, relationships, or segments within the dataset. 
+This section should cover: 
+• 
+Appropriate visualizations. 
+• 
+Application of relevant data mining techniques. 
+• 
+Interpretation of findings. 
+• 
+Discussion of business or practical insights. 
+ 
+Task 2c: Predictive Model Development (15 Marks) 
+Develop and evaluate a predictive model that addresses the chosen problem. You should select an 
+appropriate machine learning or deep learning algorithm, justify your choice, train the model, and 
+evaluate its performance using suitable metrics. 
+This section should cover: 
+• 
+Model training process. 
+• 
+Evaluation metrics and results. 
+• 
+Interpretation of model performance. 
+ 
+Task 2d: Model Deployment and Integration (10 Marks) 
+Prepare the trained model for integration with external systems. You may deploy the model as an 
+API, host it on a cloud platform, or implement another suitable approach that allows predictions 
+to be accessed programmatically. Suitable technologies include FastAPI, Flask, Koyeb, Render, 
+Railway, or other equivalent solutions. 
+This section should cover: 
+• 
+Description of the deployment approach. 
+• 
+Sample API endpoints. 
+ 
+ 
+ 
+ 
+XMUM.OAA - 100/2/8-V3.0 
+ 
+Page | 6  
+Task 2e: Agentic AI Workflow Implementation (10 Marks) 
+Develop an end-to-end agentic AI workflow using n8n that automates the entire process from data 
+ingestion through prediction to action. The workflow should demonstrate how AI agents can 
+reason over prediction results and perform meaningful automated actions. 
+The workflow should include: 
+• 
+At least one trigger node. 
+• 
+Integration with the deployed predictive model. 
+• 
+At least one AI Agent node. 
+• 
+At least one automated output or notification action. 
+• 
+Successful execution of the complete workflow. 
+You may use any suitable trigger, AI model, output channel, or automation mechanism, provided 
+the workflow demonstrates autonomous reasoning and action based on the prediction results. 
+  
+ 
+APPENDIX 1 
+MARKING RUBRICS 
+ 
+Component 
+Title 
+Assignment 
+Total Mark 
+100 
+Criteria 
+Score and Descriptors 
+Weight 
+(%) 
+Marks 
+Excellent 
+(34-40) 
+Good 
+(28-33) 
+Average 
+(20-27) 
+Need 
+Improvement  
+(12-19) 
+Poor 
+(0-11) 
+Task 1 
+Project 
+Design and 
+Report 
+The report is 
+comprehensive, well-
+structured, and 
+clearly explains the 
+problem, architecture,
+modeling, 
+deployment, 
+workflow, evaluation,
+and future 
+improvements. 
+ 
+ 
+The report covers
+all major sections
+with clear 
+explanations and 
+minor omissions. 
+ 
+ 
+The report addresses
+most sections but 
+lacks depth or 
+clarity in some 
+areas. 
+ 
+ 
+The report contains
+significant gaps or 
+weak explanations.
+ 
+The report is 
+incomplete or fails 
+to address key 
+requirements. 
+40 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Excellent 
+(9-10) 
+Good 
+(7-8) 
+Average 
+(5-6) 
+Need 
+Improvement  
+(3-4) 
+Poor 
+(0-2) 
+ 
+ 
+Task 2a 
+Data 
+Preparation 
+Dataset is 
+properly explored, 
+cleaned, and 
+prepared with 
+appropriate 
+preprocessing. 
+Most data 
+quality issues 
+are addressed 
+with minor 
+shortcomings. 
+ 
+Basic 
+preprocessing is 
+performed but 
+some issues 
+remain. 
+ 
+Limited 
+preprocessing 
+with several 
+unresolved 
+issues. 
+Minimal or no 
+meaningful data 
+preparation. 
+10 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Excellent 
+(13-15) 
+Good 
+(10-12) 
+Average 
+(7-9) 
+Need 
+Improvement  
+(4-6) 
+Poor 
+(0-3) 
+ 
+ 
+Task 2b: 
+Exploratory 
+Data 
+Analysis  
+ 
+ 
+ 
+Appropriate 
+techniques and 
+visualisations are 
+applied, producing 
+meaningful insights.
+ 
+ 
+ 
+ 
+Analysis is 
+generally 
+correct and 
+supported by 
+suitable 
+visualisations. 
+Basic analysis is 
+performed with 
+limited insights. 
+Analysis is 
+incomplete or 
+poorly 
+interpreted. 
+Minimal or no 
+meaningful 
+analysis. 
+15 
+ 
+ 
+ 
+Excellent 
+(13-15) 
+Good 
+(10-12) 
+Average 
+(7-9) 
+Need 
+Improvement  
+(4-6) 
+Poor 
+(0-3) 
+ 
+ 
+Task 2c 
+Predictive 
+Model 
+Development 
+Model is 
+appropriately 
+selected, trained, 
+evaluated, and 
+clearly 
+interpreted. 
+Model is 
+correctly 
+developed 
+with generally 
+sound 
+evaluation. 
+Model is 
+functional but 
+evaluation or 
+interpretation is 
+limited. 
+Significant 
+weaknesses in 
+model 
+development or 
+evaluation. 
+Model is non-
+functional or no 
+meaningful 
+attempt is made. 
+15 
+ 
+ 
+Excellent 
+(9-10) 
+Good 
+(7-8) 
+Average 
+(5-6) 
+Need 
+Improvement  
+(3-4) 
+Poor 
+(0-2) 
+ 
+ 
+Task 2d: 
+Model 
+Deployment 
+and 
+Integration 
+Model is 
+successfully 
+deployed and 
+accessible 
+programmatically. 
+Deployment 
+is functional 
+with minor 
+issues. 
+Basic deployment 
+is demonstrated 
+but incomplete. 
+Deployment is 
+partially 
+functional. 
+No working 
+deployment is 
+demonstrated. 
+10 
+ 
+ 
+Excellent 
+(9-10) 
+Good 
+(7-8) 
+Average 
+(5-6) 
+Need 
+Improvement  
+(3-4) 
+Poor 
+(0-2) 
+ 
+ 
+Task 2e: 
+Agentic AI 
+Workflow 
+Implementa
+tion 
+Workflow is fully 
+functional and 
+integrates 
+prediction, AI 
+reasoning, and 
+automated actions 
+effectively 
+Workflow is 
+functional 
+with minor 
+issues. 
+Workflow 
+demonstrates basic 
+functionality but 
+lacks 
+completeness. 
+Workflow is 
+partially 
+functional with 
+missing 
+components. 
+Workflow is 
+non-functional 
+or no 
+meaningful 
+implementation 
+is provided. 
+10 
+ 
+TOTAL 
+100 
+ 
+ 
+Note to students: Please include the marking rubric when submitting your coursework. 
+ 

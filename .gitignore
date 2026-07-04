@@ -1,0 +1,28 @@
+# Virtual environment
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Large data files (too big for GitHub)
+*.csv
+*.jsonl
+
+# Archived/raw data
+archive*/
+rednote_data/
+
+# Coursework PDF
+*.pdf
+
+# Streamlit secrets (contains API keys)
+.streamlit/
+
+# Claude Code internal
+.claude/
+memory/
+
+# IDE
+.vscode/
+.idea/

@@ -1,26 +1,3 @@
-"""
-YouTube Pre-Upload Engagement Advisor — FastAPI (the deployed product)
-Deploy: Render / Railway / Koyeb (free tier, HTTPS)
-
-Serves `youtube_model.joblib` (pipeline version `yt-deep-1.0`), the YouTube
-deep-dive model from SWE2304438_Project.ipynb. It predicts a *draft's*
-engagement tier (low / med / high) BEFORE upload, from content the creator
-controls — title + tags, structural copywriting features, planned publish
-timing, and the video category. ZERO post-publication metrics are used as
-inputs (no views/likes/comments): it judges "what you are about to post".
-
-The model is confidence-gated: it only "fires" a high-confidence PROMOTE
-signal when P(high) >= tau (0.70). At that threshold the HIGH-tier precision
-is high while coverage is deliberately low — the system speaks only when sure.
-
-Design notes (all validated in the notebook):
-- Tuned XGBoost (multi:softprob, 3 tiers). Features = TF-IDF(title+tags) +
-  17 structural features (10 generic copywriting + 7 YouTube-specific:
-  hour/dow/weekend/tag_count/no_comments/no_ratings/desc_len) + categoryId one-hot.
-- Tier edges and all transformers were fit on TRAIN rows only (no leakage).
-- `helps` / `hurts` are exact signed XGBoost `pred_contribs` for the predicted
-  class (SHAP-free): the content features that pushed the tier UP vs DOWN.
-"""
 from typing import Optional, List, Dict
 import json
 

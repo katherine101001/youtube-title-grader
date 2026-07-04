@@ -453,6 +453,221 @@ def suggest(req: SuggestRequest):
     )
 
 
+# ---------------------------------------------------------------------------
+# /optimize — iterative AI title optimizer (2 rounds)
+# ---------------------------------------------------------------------------
+class OptimizeRequest(BaseModel):
+    idea: str = Field(..., description="Video idea, not a polished title")
+    category_id: int = Field(24)
+
+
+class ScoredTitle(BaseModel):
+    title: str
+    score: int
+    probabilities: Dict[str, float]
+    decision: str
+    helps: List[Dict]
+    hurts: List[Dict]
+
+
+class OptimizeResponse(BaseModel):
+    idea: str
+    category: str
+    best_title: str
+    best_score: int
+    rounds: List[Dict]  # [{round, candidates: [ScoredTitle]}]
+
+
+def _score_with_details(title: str, category_id: int) -> dict:
+    """Score a title and return full detail including helps/hurts."""
+    draft = Draft(title=title, category_id=category_id)
+    text = build_text(draft)
+    X = build_X(draft, text)
+    proba = model.predict_proba(X)[0]
+    pred_num = int(model.predict(X)[0])
+    p_high = float(proba[CLASSES.index("high")])
+    score = round(proba[CLASSES.index("low")] * 0 + proba[CLASSES.index("med")] * 50 + proba[CLASSES.index("high")] * 100)
+    pred_label = CLASSES[pred_num]
+    decision, _ = decide(pred_label, p_high)
+    helps, hurts = top_drivers(X, pred_num, k=6)
+    return {
+        "title": title,
+        "score": score,
+        "probabilities": {CLASSES[i]: round(float(p), 4) for i, p in enumerate(proba)},
+        "decision": decision,
+        "helps": helps,
+        "hurts": hurts,
+    }
+
+
+def _generate_titles_for_idea(idea: str, category_name: str, num: int) -> List[str]:
+    """Use Gemini to generate titles from a video idea (not a title)."""
+    if not GEMINI_KEY or len(GEMINI_KEY) < 10:
+        return []
+
+    prompt = (
+        f"A creator has this video idea: \"{idea}\"\n"
+        f"Category: {category_name}\n\n"
+        f"Generate {num} YouTube video titles that would get high engagement. "
+        f"Each title should be from a different angle (curiosity, emotional, listicle, controversial, search-friendly).\n\n"
+        f"Return ONLY a JSON array of strings. No numbering, no extra text."
+    )
+
+    try:
+        resp = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+            params={"key": GEMINI_KEY},
+            headers={"content-type": "application/json"},
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.9, "maxOutputTokens": 500},
+            },
+            timeout=30,
+        )
+        if resp.ok:
+            data = resp.json()
+            text = ""
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if parts:
+                    text = parts[0].get("text", "")
+            if text:
+                try:
+                    titles = json.loads(text)
+                    if isinstance(titles, list):
+                        return [t for t in titles if isinstance(t, str)][:num]
+                except json.JSONDecodeError:
+                    match = re.search(r"\[.*?\]", text, re.DOTALL)
+                    if match:
+                        try:
+                            titles = json.loads(match.group())
+                            if isinstance(titles, list):
+                                return [t for t in titles if isinstance(t, str)][:num]
+                        except json.JSONDecodeError:
+                            pass
+    except requests.RequestException:
+        pass
+    return []
+
+
+def _optimize_titles(idea: str, top_titles: List[dict], category_name: str, num: int) -> List[str]:
+    """Gemini improves the best titles using helps/hurts feedback."""
+    if not GEMINI_KEY or len(GEMINI_KEY) < 10:
+        return []
+
+    feedback = ""
+    for i, t in enumerate(top_titles):
+        helps_str = ", ".join(f"{h['feature']} (+{h['effect']})" for h in t.get("helps", [])[:3])
+        hurts_str = ", ".join(f"{h['feature']} ({h['effect']})" for h in t.get("hurts", [])[:3])
+        feedback += f"{i+1}. \"{t['title']}\" — Score {t['score']}/100\n"
+        feedback += f"   Helps: {helps_str or 'none'}\n"
+        feedback += f"   Hurts: {hurts_str or 'none'}\n\n"
+
+    prompt = (
+        f"Original idea: \"{idea}\"\n"
+        f"Category: {category_name}\n\n"
+        f"Here are the best titles from the first round and what the model liked/disliked:\n\n"
+        f"{feedback}"
+        f"Using this feedback, generate {num} IMPROVED versions. Fix the weaknesses and amplify strengths.\n\n"
+        f"Return ONLY a JSON array of strings. No other text."
+    )
+
+    try:
+        resp = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent",
+            params={"key": GEMINI_KEY},
+            headers={"content-type": "application/json"},
+            json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.8, "maxOutputTokens": 500},
+            },
+            timeout=30,
+        )
+        if resp.ok:
+            data = resp.json()
+            text = ""
+            candidates = data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if parts:
+                    text = parts[0].get("text", "")
+            if text:
+                try:
+                    titles = json.loads(text)
+                    if isinstance(titles, list):
+                        return [t for t in titles if isinstance(t, str)][:num]
+                except json.JSONDecodeError:
+                    match = re.search(r"\[.*?\]", text, re.DOTALL)
+                    if match:
+                        try:
+                            titles = json.loads(match.group())
+                            if isinstance(titles, list):
+                                return [t for t in titles if isinstance(t, str)][:num]
+                        except json.JSONDecodeError:
+                            pass
+    except requests.RequestException:
+        pass
+    return []
+
+
+@app.post("/optimize", response_model=OptimizeResponse)
+def optimize(req: OptimizeRequest):
+    """Iterative AI optimization: Gemini generates → model scores → Gemini improves → model scores."""
+    category_name = YT_CAT.get(req.category_id, str(req.category_id))
+    idea = req.idea.strip()
+
+    rounds = []
+
+    # Round 1: Generate 5 titles from idea
+    r1_titles = _generate_titles_for_idea(idea, category_name, 5)
+    if not r1_titles:
+        raise HTTPException(status_code=503, detail="Gemini unavailable. Set GEMINI_API_KEY.")
+
+    r1_scored = []
+    for t in r1_titles:
+        r1_scored.append(_score_with_details(t, req.category_id))
+    r1_scored.sort(key=lambda x: -x["score"])
+
+    rounds.append({
+        "round": 1,
+        "description": "Generated 5 titles from idea, model scored each",
+        "candidates": [{
+            "title": s["title"], "score": s["score"], "decision": s["decision"],
+            "helps": s["helps"], "hurts": s["hurts"],
+        } for s in r1_scored],
+    })
+
+    # Round 2: Optimize top 2
+    top2 = r1_scored[:2]
+    r2_titles = _optimize_titles(idea, top2, category_name, 3)
+    if r2_titles:
+        r2_scored = []
+        for t in r2_titles:
+            r2_scored.append(_score_with_details(t, req.category_id))
+        r2_scored.sort(key=lambda x: -x["score"])
+
+        rounds.append({
+            "round": 2,
+            "description": "Gemini improved top 2 using helps/hurts, model re-scored",
+            "candidates": [{
+                "title": s["title"], "score": s["score"], "decision": s["decision"],
+                "helps": s["helps"], "hurts": s["hurts"],
+            } for s in r2_scored],
+        })
+        best = r2_scored[0]
+    else:
+        best = r1_scored[0]
+
+    return OptimizeResponse(
+        idea=idea,
+        category=category_name,
+        best_title=best["title"],
+        best_score=best["score"],
+        rounds=rounds,
+    )
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))

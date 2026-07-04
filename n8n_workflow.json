@@ -1,147 +1,83 @@
 {
-  "name": "🤖 AI Title Optimizer — Idea-to-Title Loop",
+  "name": "YouTube Title Optimizer — Agentic AI (5-Layer)",
   "nodes": [
     {
       "parameters": {"httpMethod": "POST", "path": "optimize", "responseMode": "lastNode"},
-      "name": "Webhook (from Streamlit)",
+      "name": "1. Trigger (Webhook)",
       "type": "n8n-nodes-base.webhook",
       "position": [250, 300]
     },
     {
       "parameters": {
-        "jsCode": "const idea = $input.first().json.body.idea || $input.first().json.idea || $input.first().json.body.title;\nconst category = $input.first().json.body.category_id || 24;\nreturn { idea, category, round: 0, bestTitle: '', bestScore: 0, history: [] };"
+        "url": "https://youtube-title-grader.onrender.com/optimize",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "idea", "value": "={{ $json.body.idea }}"},
+            {"name": "category_id", "value": "={{ $json.body.category_id || 24 }}"}
+          ]
+        }
       },
-      "name": "Init state",
-      "type": "n8n-nodes-base.code",
+      "name": "2. Call Model (Render /optimize)",
+      "type": "n8n-nodes-base.httpRequest",
       "position": [500, 300]
     },
     {
       "parameters": {
-        "promptType": "define",
-        "text": "You are a YouTube title expert. A creator has this video idea:\n\n\"{{ $json.idea }}\"\n\nGenerate 5 YouTube video titles that would get high engagement. Each title should be from a different angle (curiosity, listicle, emotional, controversial, search-friendly).\n\nReturn ONLY a JSON array of strings. No numbering, no extra text.\nExample: [\"Title 1\", \"Title 2\", \"Title 3\", \"Title 4\", \"Title 5\"]"
+        "jsCode": "const d = $input.first().json;\nconst rounds = d.rounds || [];\nlet summary = '';\nrounds.forEach(r => {\n  const c = r.candidates || [];\n  summary += `Round ${r.round}: ` + c.map(x => x.title + ' (' + x.score + ')').join(' | ') + '\\n';\n});\n\nreturn {\n  idea: d.idea,\n  category: d.category,\n  best_title: d.best_title,\n  best_score: d.best_score,\n  rounds_summary: summary,\n  full_result: d\n};"
       },
-      "name": "Round 1: Generate 5 titles",
-      "type": "@n8n/n8n-nodes-langchain.agent",
+      "name": "3. Format Results",
+      "type": "n8n-nodes-base.code",
       "position": [750, 300]
     },
     {
       "parameters": {
-        "jsCode": "const text = $input.first().json.output || $input.first().json.text || JSON.stringify($input.first().json);\nlet titles = [];\ntry { titles = JSON.parse(text); } catch(e) {\n  const match = text.match(/\\[.*?\\]/s);\n  if (match) try { titles = JSON.parse(match[0]); } catch(e2) {}\n}\nif (!Array.isArray(titles) || titles.length === 0) {\n  titles = [text.split('\\n').find(l => l.trim()) || 'Untitled'];\n}\nreturn titles.map(t => ({ title: t.trim(), score: 0, round: 1 }));"
+        "promptType": "define",
+        "text": "You are a YouTube content strategist. Analyze this AI optimization result and explain what happened.\n\nIdea: {{ $json.idea }}\nCategory: {{ $json.category }}\n\nBest title found: \"{{ $json.best_title }}\" — Score: {{ $json.best_score }}/100\n\nOptimization process:\n{{ $json.rounds_summary }}\n\nYour task:\n1. Explain in 2-3 sentences WHY the winning title scored highest\n2. Point out 1-2 patterns you noticed across rounds\n3. Give one actionable tip for the creator\n\nKeep it under 120 words. Be specific and useful."
       },
-      "name": "Parse titles",
-      "type": "n8n-nodes-base.code",
+      "name": "4. AI Agent (Reasoning)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
       "position": [1000, 300]
     },
     {
       "parameters": {
-        "batchSize": 1,
-        "options": {}
-      },
-      "name": "One by one",
-      "type": "n8n-nodes-base.splitInBatches",
-      "position": [1250, 300]
-    },
-    {
-      "parameters": {
-        "url": "https://youtube-title-grader.onrender.com/predict",
-        "method": "POST",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {"name": "title", "value": "={{ $json.title }}"},
-            {"name": "category_id", "value": "={{ $('Init state').first().json.category }}"},
-            {"name": "tags", "value": ""},
-            {"name": "description", "value": ""},
-            {"name": "comments_disabled", "value": false},
-            {"name": "ratings_disabled", "value": false}
-          ]
+        "operation": "append",
+        "documentId": {"__rl": true, "value": "={{ $env.GOOGLE_SHEET_ID }}", "mode": "list"},
+        "sheetName": "Sheet1",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $now.format('YYYY-MM-DD HH:mm') }}",
+            "idea": "={{ $('3. Format Results').first().json.idea }}",
+            "best_title": "={{ $('3. Format Results').first().json.best_title }}",
+            "score": "={{ $('3. Format Results').first().json.best_score }}",
+            "rounds": "={{ $('3. Format Results').first().json.rounds_summary }}",
+            "ai_analysis": "={{ $('4. AI Agent (Reasoning)').first().json.output || $('4. AI Agent (Reasoning)').first().json.text }}"
+          }
         }
       },
-      "name": "Score title",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [1500, 300]
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\nconst scored = items.map(item => {\n  const p = item.json.probabilities;\n  const score = Math.round((p.low||0)*0 + (p.med||0)*50 + (p.high||0)*100);\n  const title = $items('One by one').find(i => true)?.json?.title || item.json.title;\n  return { title, score, probabilities: p, decision: item.json.decision, helps: item.json.helps, hurts: item.json.hurts };\n});\nscored.sort((a,b) => b.score - a.score);\nconst top2 = scored.slice(0, 2);\nconst best = top2[0];\n\nreturn {\n  top2,\n  best: { title: best.title, score: best.score },\n  allScored: scored.map(s => s.title + ' → ' + s.score),\n  round: 1,\n  idea: $('Init state').first().json.idea,\n  category: $('Init state').first().json.category\n};"
-      },
-      "name": "Rank & pick top 2",
-      "type": "n8n-nodes-base.code",
-      "position": [1750, 300]
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "You are optimizing YouTube titles. Here are the 2 highest-scoring titles from the first round:\n\n1. \"{{ $json.top2[0].title }}\" — Score: {{ $json.top2[0].score }}/100\n   What helped: {{ JSON.stringify($json.top2[0].helps) }}\n   What hurt: {{ JSON.stringify($json.top2[0].hurts) }}\n\n2. \"{{ $json.top2[1].title }}\" — Score: {{ $json.top2[1].score }}/100\n   What helped: {{ JSON.stringify($json.top2[1].helps) }}\n   What hurt: {{ JSON.stringify($json.top2[1].hurts) }}\n\nUsing the helps/hurts feedback, generate 3 IMPROVED versions of these titles. Fix the weak spots and amplify the strengths.\n\nReturn ONLY a JSON array of 3 strings. No other text."
-      },
-      "name": "Round 2: Optimize titles",
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "position": [250, 600]
-    },
-    {
-      "parameters": {
-        "jsCode": "const text = $input.first().json.output || $input.first().json.text || JSON.stringify($input.first().json);\nlet titles = [];\ntry { titles = JSON.parse(text); } catch(e) {\n  const match = text.match(/\\[.*?\\]/s);\n  if (match) try { titles = JSON.parse(match[0]); } catch(e2) {}\n}\nif (!Array.isArray(titles) || titles.length === 0) {\n  titles = [text.split('\\n').find(l => l.trim()) || 'Untitled'];\n}\nreturn titles.map(t => ({ title: t.trim(), round: 2 }));"
-      },
-      "name": "Parse titles R2",
-      "type": "n8n-nodes-base.code",
-      "position": [500, 600]
-    },
-    {
-      "parameters": {"batchSize": 1},
-      "name": "One by one R2",
-      "type": "n8n-nodes-base.splitInBatches",
-      "position": [750, 600]
-    },
-    {
-      "parameters": {
-        "url": "https://youtube-title-grader.onrender.com/predict",
-        "method": "POST",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {"name": "title", "value": "={{ $json.title }}"},
-            {"name": "category_id", "value": "={{ $('Init state').first().json.category }}"},
-            {"name": "tags", "value": ""},
-            {"name": "description", "value": ""},
-            {"name": "comments_disabled", "value": false},
-            {"name": "ratings_disabled", "value": false}
-          ]
-        }
-      },
-      "name": "Score title R2",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [1000, 600]
-    },
-    {
-      "parameters": {
-        "jsCode": "const items = $input.all();\nconst scored = items.map(item => {\n  const p = item.json.probabilities;\n  const score = Math.round((p.low||0)*0 + (p.med||0)*50 + (p.high||0)*100);\n  return { title: item.json.title || '?', score, decision: item.json.decision };\n});\nconst prevBest = $('Rank & pick top 2').first().json.best;\nconst allRounds = [...($('Rank & pick top 2').first().json.allScored || []), ...scored.map(s => s.title + ' → ' + s.score)];\nconst globalBest = [...scored, prevBest].sort((a,b) => b.score - a.score)[0];\n\nreturn {\n  best: globalBest,\n  round1Best: prevBest,\n  round2Scored: scored,\n  allRounds,\n  idea: $('Init state').first().json.idea\n};"
-      },
-      "name": "Select winner & compile",
-      "type": "n8n-nodes-base.code",
-      "position": [1250, 600]
+      "name": "5. Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [1250, 150]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\n  \"idea\": {{ JSON.stringify($json.idea) }},\n  \"best_title\": {{ JSON.stringify($json.best.title) }},\n  \"best_score\": {{ $json.best.score }},\n  \"started_at\": {{ $json.round1Best.score }},\n  \"final_score\": {{ $json.best.score }},\n  \"improvement\": {{ ($json.best.score || 0) - ($json.round1Best.score || 0) }},\n  \"all_rounds\": {{ JSON.stringify($json.allRounds) }},\n  \"verdict\": \"Started at {{ $json.round1Best.score }}, best final is {{ $json.best.score }}\"\n}"
+        "responseBody": "={\n  \"idea\": {{ JSON.stringify($('3. Format Results').first().json.idea) }},\n  \"best_title\": {{ JSON.stringify($('3. Format Results').first().json.best_title) }},\n  \"best_score\": {{ $('3. Format Results').first().json.best_score }},\n  \"rounds\": {{ JSON.stringify($('3. Format Results').first().json.full_result.rounds) }},\n  \"ai_analysis\": {{ JSON.stringify($('4. AI Agent (Reasoning)').first().json.output || $('4. AI Agent (Reasoning)').first().json.text) }}\n}"
       },
-      "name": "Respond to Streamlit",
+      "name": "6. Respond",
       "type": "n8n-nodes-base.respondToWebhook",
-      "position": [1500, 600]
+      "position": [1500, 300]
     }
   ],
   "connections": {
-    "Webhook (from Streamlit)": {"main": [[{"node": "Init state", "type": "main", "index": 0}]]},
-    "Init state": {"main": [[{"node": "Round 1: Generate 5 titles", "type": "main", "index": 0}]]},
-    "Round 1: Generate 5 titles": {"main": [[{"node": "Parse titles", "type": "main", "index": 0}]]},
-    "Parse titles": {"main": [[{"node": "One by one", "type": "main", "index": 0}]]},
-    "One by one": {"main": [[{"node": "Score title", "type": "main", "index": 0}]]},
-    "Score title": {"main": [[{"node": "Rank & pick top 2", "type": "main", "index": 0}]]},
-    "Rank & pick top 2": {"main": [[{"node": "Round 2: Optimize titles", "type": "main", "index": 0}]]},
-    "Round 2: Optimize titles": {"main": [[{"node": "Parse titles R2", "type": "main", "index": 0}]]},
-    "Parse titles R2": {"main": [[{"node": "One by one R2", "type": "main", "index": 0}]]},
-    "One by one R2": {"main": [[{"node": "Score title R2", "type": "main", "index": 0}]]},
-    "Score title R2": {"main": [[{"node": "Select winner & compile", "type": "main", "index": 0}]]},
-    "Select winner & compile": {"main": [[{"node": "Respond to Streamlit", "type": "main", "index": 0}]]}
+    "1. Trigger (Webhook)": {"main": [[{"node": "2. Call Model (Render /optimize)", "type": "main", "index": 0}]]},
+    "2. Call Model (Render /optimize)": {"main": [[{"node": "3. Format Results", "type": "main", "index": 0}]]},
+    "3. Format Results": {"main": [
+      [{"node": "4. AI Agent (Reasoning)", "type": "main", "index": 0}],
+      [{"node": "5. Log to Google Sheets", "type": "main", "index": 0}]
+    ]},
+    "4. AI Agent (Reasoning)": {"main": [[{"node": "6. Respond", "type": "main", "index": 0}]]}
   }
 }

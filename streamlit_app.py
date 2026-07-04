@@ -12,7 +12,8 @@ from typing import Optional, Dict, List, Tuple
 st.set_page_config(page_title="YouTube Title Grader", page_icon="🎬", layout="wide",
                    initial_sidebar_state="collapsed")
 
-API_BASE: str = st.secrets.get("API_URL", "http://localhost:8000")
+API_BASE: str = st.secrets.get("API_URL", "https://youtube-title-grader.onrender.com")
+N8N_WEBHOOK: str = st.secrets.get("N8N_WEBHOOK", "https://katherine2304.app.n8n.cloud/webhook/analyze-title")
 
 YT_CATEGORIES: Dict[int, str] = {
     1: "Film & Animation", 2: "Autos & Vehicles", 10: "Music",
@@ -381,6 +382,46 @@ if grade_clicked and title.strip():
                         <span style="font-size:0.85rem;color:{imp_color};margin-left:0.75rem;width:45px;text-align:right;">({imp_str})</span>
                     </div>
                     """, unsafe_allow_html=True)
+
+    # ── n8n AI Deep Analysis ──
+    st.divider()
+    st.markdown("### 🤖 AI Deep Analysis")
+    st.caption("n8n agentic workflow: model output → Gemini → strategic feedback.")
+
+    if st.button("🔬 Get AI Analysis", type="secondary"):
+        payload = st.session_state.get("last_payload", {})
+        if not payload:
+            st.warning("Grade a title first.")
+        else:
+            with st.spinner("n8n orchestrating: calling model, running AI analysis..."):
+                try:
+                    resp = requests.post(
+                        N8N_WEBHOOK,
+                        json={
+                            "title": payload.get("title", ""),
+                            "tags": payload.get("tags", ""),
+                            "category_id": payload.get("category_id", 24),
+                            "description": payload.get("description", ""),
+                        },
+                        timeout=120,
+                    )
+                    if resp.ok:
+                        analysis = resp.json()
+                        text = ""
+                        if isinstance(analysis, dict):
+                            text = analysis.get("output") or analysis.get("text") or str(analysis)
+                        elif isinstance(analysis, list):
+                            text = analysis[0].get("text", str(analysis)) if analysis else ""
+                        else:
+                            text = str(analysis)
+                        if text:
+                            st.success(text)
+                        else:
+                            st.warning("AI returned empty response. Check n8n workflow.")
+                    else:
+                        st.warning(f"n8n returned error {resp.status_code}")
+                except requests.RequestException as e:
+                    st.warning(f"Cannot reach n8n: {e}")
 
 else:
     st.divider()

@@ -6,14 +6,15 @@ Pre-upload screening: enter a title, get a score, see what helps/hurts, try alte
 import streamlit as st
 import requests
 import re
+import os
 from datetime import datetime, timezone
 from typing import Optional, Dict, List, Tuple
 
 st.set_page_config(page_title="YouTube Title Grader", page_icon="🎬", layout="wide",
                    initial_sidebar_state="collapsed")
 
-API_BASE: str = st.secrets.get("API_URL", "https://youtube-title-grader.onrender.com")
-N8N_WEBHOOK: str = st.secrets.get("N8N_WEBHOOK", "https://katherine2304.app.n8n.cloud/webhook/analyze-title")
+API_BASE: str = os.environ.get("API_URL", "https://youtube-title-grader.onrender.com")
+N8N_WEBHOOK: str = os.environ.get("N8N_WEBHOOK", "https://katherine2304.app.n8n.cloud/webhook/analyze-title")
 
 YT_CATEGORIES: Dict[int, str] = {
     1: "Film & Animation", 2: "Autos & Vehicles", 10: "Music",
@@ -159,9 +160,9 @@ def build_insights(result: dict) -> Tuple[List[str], List[str]]:
 # ---------------------------------------------------------------------------
 st.markdown("""
 <div style="text-align:center;padding:2rem 0 1rem 0;">
-    <h1 style="font-size:2.5rem;margin-bottom:0.25rem;">🎬 YouTube Title Grader</h1>
+    <h1 style="font-size:2.5rem;margin-bottom:0.25rem;">🎬 YouTube Title Optimizer</h1>
     <p style="font-size:1.05rem;color:#999;">
-        Enter a title. Get an instant score. Improve it before you publish.
+        Enter a title or video idea. Get a score. Let AI optimize it.
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -170,8 +171,8 @@ st.markdown("""
 # ZONE 1 — Input
 # ---------------------------------------------------------------------------
 title = st.text_input(
-    "Your video title",
-    placeholder="e.g. I Built a Gaming PC That Runs on Tears",
+    "Your video title or idea",
+    placeholder="e.g. a video about building a PC that cools itself with AI",
     key="title_input",
 )
 
@@ -383,45 +384,58 @@ if grade_clicked and title.strip():
                     </div>
                     """, unsafe_allow_html=True)
 
-    # ── n8n AI Deep Analysis ──
+    # ── n8n AI Idea-to-Title Optimizer ──
     st.divider()
-    st.markdown("### 🤖 AI Deep Analysis")
-    st.caption("n8n agentic workflow: model output → Gemini → strategic feedback.")
+    st.markdown("### 🤖 AI Idea-to-Title Optimizer")
+    st.caption("Your idea → Gemini generates titles → Model scores → Gemini improves → loops until optimized.")
 
-    if st.button("🔬 Get AI Analysis", type="secondary"):
+    if st.button("🚀 Start AI Optimization", type="secondary"):
         payload = st.session_state.get("last_payload", {})
-        if not payload:
-            st.warning("Grade a title first.")
+        idea = payload.get("title", "") if payload else ""
+        if not idea:
+            st.warning("Enter your video idea above first.")
         else:
-            with st.spinner("n8n orchestrating: calling model, running AI analysis..."):
+            with st.spinner("AI generating and optimizing titles..."):
                 try:
                     resp = requests.post(
                         N8N_WEBHOOK,
                         json={
-                            "title": payload.get("title", ""),
-                            "tags": payload.get("tags", ""),
+                            "idea": idea,
                             "category_id": payload.get("category_id", 24),
-                            "description": payload.get("description", ""),
                         },
-                        timeout=120,
+                        timeout=300,
                     )
                     if resp.ok:
-                        analysis = resp.json()
-                        text = ""
-                        if isinstance(analysis, dict):
-                            text = analysis.get("output") or analysis.get("text") or str(analysis)
-                        elif isinstance(analysis, list):
-                            text = analysis[0].get("text", str(analysis)) if analysis else ""
+                        data = resp.json()
+                        if isinstance(data, dict):
+                            best = data.get("best") or data.get("best_title") or {}
+                            best_title = best.get("title", "") if isinstance(best, dict) else str(best)
+                            best_score = best.get("score", 0) if isinstance(best, dict) else 0
+                            rounds = data.get("all_rounds") or data.get("allRounds") or []
+                            idea_text = data.get("idea", "")
+
+                            st.markdown(f"""
+                            <div style="background:#1a1a1a;border:1px solid #22c55e40;border-radius:14px;padding:1.25rem;margin:1rem 0;">
+                                <div style="font-size:0.85rem;color:#888;margin-bottom:0.5rem;">YOUR IDEA</div>
+                                <div style="font-size:1rem;color:#aaa;">{idea_text}</div>
+                                <div style="margin-top:1rem;font-size:0.85rem;color:#888;margin-bottom:0.5rem;">🏆 BEST TITLE</div>
+                                <div style="font-size:1.3rem;font-weight:700;color:#22c55e;">{best_title}</div>
+                                <div style="font-size:1rem;color:#22c55e;margin-top:0.25rem;">Score: {best_score}/100</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                            if rounds:
+                                st.markdown("#### 📈 How it got there")
+                                for r in rounds:
+                                    st.caption(f"  {r}")
                         else:
-                            text = str(analysis)
-                        if text:
-                            st.success(text)
-                        else:
-                            st.warning("AI returned empty response. Check n8n workflow.")
+                            st.json(data)
                     else:
                         st.warning(f"n8n returned error {resp.status_code}")
+                except requests.Timeout:
+                    st.warning("Optimization timed out after 5 minutes. The n8n workflow may be stuck.")
                 except requests.RequestException as e:
-                    st.warning(f"Cannot reach n8n: {e}")
+                    st.warning(f"Cannot reach n8n. Is the workflow activated?")
 
 else:
     st.divider()

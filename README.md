@@ -72,7 +72,7 @@ A content creator types a video idea → the system generates 10 title candidate
 
 ## Quick Links
 
-- **Live App (Streamlit):** [Add your Streamlit Cloud URL]
+- **Live App (Streamlit):** [youtube-title-grader.streamlit.app](https://youtube-title-grader.streamlit.app/)
 - **API Docs:** `https://youtube-title-grader.onrender.com/docs`
 - **n8n Webhook:** `https://katherine2304.app.n8n.cloud/webhook/optimize`
 
